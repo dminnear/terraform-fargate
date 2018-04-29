@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+
+# Top level script to provide easy infrastructure management
+
+# Run 'help set' to see what all these do
+set -euxo pipefail
+
+# Gives us the directory containing this file
+# for ease of constructing relative paths
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# The version of terraform we use
+TF_VERSION='0.11.7'
+
+# Prints the help text for this script
+print_help() {
+  cat << 'HELP'
+
+Usage:
+    fargate <subcommand> [<args>]
+
+Subcommands:
+    deploy-backend <env>
+        Deploys the backend to fargate in the context of <env>.
+
+    deploy-frontend <env>
+        Deploys the frontend to fargate in the context of <env>.
+
+    install-terraform
+        Install the requisite version of terraform.
+
+    terraform <env> [<args>]
+        Runs terraform commands in the context of the provided <env>.
+
+HELP
+}
+
+# Exit if no arguments are provided
+if [ "$#" -eq 0 ]; then
+  print_help
+  exit 1
+fi
+
+# Get the subcommand
+SUBCOMMAND=$1
+shift 1
+
+case "$SUBCOMMAND" in
+  deploy-backend)
+    ENV=$1
+    IMAGE=dminnear/terraform-fargate-backend:$ENV-latest
+
+    pushd "$DIR/services/backend" > /dev/null
+
+    docker build -t "$IMAGE" .
+    docker push "$IMAGE"
+
+    CLUSTER=$("$DIR/fargate" terraform "$ENV" output backend_ecs_cluster_id)
+    TASK_ARNS=$(aws --profile terraform-fargate ecs list-tasks --cluster "$CLUSTER" | jq -r '.taskArns[]')
+    for TASK_ARN in $TASK_ARNS; do
+      aws --profile terraform-fargate ecs stop-task --cluster "$CLUSTER" --task "$TASK_ARN"
+    done
+
+    trap 'popd > /dev/null' INT TERM EXIT
+    exit $?
+  ;;
+
+  deploy-frontend)
+    ENV=$1
+    IMAGE=dminnear/terraform-fargate-frontend:$ENV-latest
+
+    pushd "$DIR/services/frontend" > /dev/null
+
+    BACKEND_ENDPOINT="http://"$("$DIR"/fargate terraform "$ENV" output backend_url)"/lorem"
+    docker build --build-arg BACKEND_ENDPOINT=$BACKEND_ENDPOINT -t "$IMAGE" .
+    docker push "$IMAGE"
+
+    CLUSTER=$("$DIR/fargate" terraform "$ENV" output frontend_ecs_cluster_id)
+    TASK_ARNS=$(aws --profile terraform-fargate ecs list-tasks --cluster "$CLUSTER" | jq -r '.taskArns[]')
+    for TASK_ARN in $TASK_ARNS; do
+      aws --profile terraform-fargate ecs stop-task --cluster "$CLUSTER" --task "$TASK_ARN"
+    done
+
+    trap 'popd > /dev/null' INT TERM EXIT
+    exit $?
+  ;;
+
+  install-terraform)
+    "$DIR/infrastructure/scripts/install-terraform" "$TF_VERSION" '/usr/local/bin'
+    exit $?
+  ;;
+
+  terraform)
+    ENV=$1
+    shift 1
+
+    pushd "$DIR/infrastructure/terraform/envs/$ENV" > /dev/null
+
+    terraform "$@"
+
+    trap 'popd > /dev/null' INT TERM EXIT
+    exit $?
+  ;;
+
+  *)
+    print_help
+    exit 1
+  ;;
+esac

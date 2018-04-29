@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+# Installs terraform
+
+set -euxo pipefail
+
+TF_VERSION="$1"
+INSTALL_DIR="$2"
+
+# Create a temporary directory for the terraform download
+TMP_DIR=$(mktemp -d)
+pushd "$TMP_DIR" > /dev/null
+
+# Download the appropriate terraform binary in zip format
+if [ "$(uname)" = "Darwin" ]; then
+    curl -sS https://releases.hashicorp.com/terraform/"$TF_VERSION"/terraform_"$TF_VERSION"_darwin_amd64.zip > terraform.zip
+elif [ "$(uname)" = "Linux" ]; then
+    curl -sS https://releases.hashicorp.com/terraform/"$TF_VERSION"/terraform_"$TF_VERSION"_linux_amd64.zip > terraform.zip
+else
+  echo "This script currently only supports installing terraform on macOS and Linux"
+  exit 1
+fi
+
+# Unzip terraform binary and move to path
+unzip terraform.zip
+mv terraform "$INSTALL_DIR"
+
+# Remove the temporary directory upon exit
+trap '$(popd > /dev/null && rm -rf "$TMP_DIR")' INT TERM EXIT
