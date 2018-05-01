@@ -28,26 +28,32 @@ module "network" {
 }
 
 module "backend" {
-  source = "../../modules/aws/services/backend"
+  source = "../../modules/aws/fargate"
 
-  project         = "${var.project}"
-  env             = "${var.env}"
-  image           = "${var.backend_image}"
-  port            = 3000
-  private_subnets = ["${module.network.private_subnet_ids}"]
-  public_subnets  = ["${module.network.public_subnet_ids}"]
-  vpc_id          = "${module.network.vpc_id}"
-  vpc_cidr_block  = "${var.vpc_cidr_block}"
+  name         = "backend"
+  project      = "${var.project}"
+  env          = "${var.env}"
+  image        = "${var.backend_image}"
+  port         = 3000
+  cpu          = 256
+  memory       = 512
+  alb_subnets  = ["${module.network.private_subnet_ids}"]
+  alb_internal = true
+  ecs_subnets  = ["${module.network.private_subnet_ids}"]
+  vpc_id       = "${module.network.vpc_id}"
 }
 
 module "frontend" {
-  source = "../../modules/aws/services/frontend"
+  source = "../../modules/aws/fargate"
 
-  project         = "${var.project}"
-  env             = "${var.env}"
-  image           = "${var.frontend_image}"
-  port            = 8080
-  private_subnets = ["${module.network.private_subnet_ids}"]
-  public_subnets  = ["${module.network.public_subnet_ids}"]
-  vpc_id          = "${module.network.vpc_id}"
+  name        = "frontend"
+  project     = "${var.project}"
+  env         = "${var.env}"
+  image       = "${var.frontend_image}"
+  port        = 8080
+  cpu         = 256
+  memory      = 512
+  alb_subnets = ["${module.network.public_subnet_ids}"]
+  ecs_subnets = ["${module.network.private_subnet_ids}"]
+  vpc_id      = "${module.network.vpc_id}"
 }

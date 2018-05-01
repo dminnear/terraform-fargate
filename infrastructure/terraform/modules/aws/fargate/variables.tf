@@ -6,6 +6,10 @@ variable "env" {
   description = "The name of the env"
 }
 
+variable "name" {
+  description = "The name of the service"
+}
+
 variable "cpu" {
   description = "The number of cpu units to reserve for this service"
   default     = 256
@@ -29,24 +33,25 @@ variable "desired_count" {
   default     = 1
 }
 
-variable "private_subnets" {
+variable "alb_subnets" {
   type        = "list"
-  description = "The private subnets to associate with this service"
+  description = "The subnets to associate with the ALB"
 }
 
-variable "public_subnets" {
+variable "alb_internal" {
+  description = "Whether the ALB is internal (true) or public facing (false)"
+  default     = false
+}
+
+variable "ecs_subnets" {
   type        = "list"
-  description = "The public subnets to associate with the ALB"
+  description = "The public subnets to associate with this service"
 }
 
 variable "vpc_id" {
   description = "ID of the VPC"
 }
 
-variable "vpc_cidr_block" {
-  description = "CIDR block of the VPC"
-}
-
 locals {
-  name = "${var.project}-${var.env}-backend"
+  name = "${var.project}-${var.env}-${var.name}"
 }

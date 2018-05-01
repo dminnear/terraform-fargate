@@ -1,4 +1,4 @@
-resource "aws_security_group" "frontend-alb" {
+resource "aws_security_group" "alb" {
   name   = "${local.name}-alb-sg"
   vpc_id = "${var.vpc_id}"
 
@@ -19,21 +19,24 @@ resource "aws_security_group" "frontend-alb" {
   tags {
     Project = "${var.project}"
     Env     = "${var.env}"
+    Service = "${var.name}"
   }
 }
 
-resource "aws_alb" "frontend" {
+resource "aws_alb" "service" {
   name            = "${local.name}"
-  subnets         = ["${var.public_subnets}"]
-  security_groups = ["${aws_security_group.frontend-alb.id}"]
+  internal        = "${var.alb_internal}"
+  subnets         = ["${var.alb_subnets}"]
+  security_groups = ["${aws_security_group.alb.id}"]
 
   tags {
     Project = "${var.project}"
     Env     = "${var.env}"
+    Service = "${var.name}"
   }
 }
 
-resource "aws_alb_target_group" "frontend" {
+resource "aws_alb_target_group" "service" {
   name        = "${local.name}"
   port        = "${var.port}"
   protocol    = "HTTP"
@@ -44,21 +47,22 @@ resource "aws_alb_target_group" "frontend" {
     path = "/health"
   }
 
-  depends_on = ["aws_alb.frontend"]
+  depends_on = ["aws_alb.service"]
 
   tags {
     Project = "${var.project}"
     Env     = "${var.env}"
+    Service = "${var.name}"
   }
 }
 
-resource "aws_alb_listener" "frontend" {
-  load_balancer_arn = "${aws_alb.frontend.id}"
+resource "aws_alb_listener" "service" {
+  load_balancer_arn = "${aws_alb.service.id}"
   port              = "80"
   protocol          = "HTTP"
 
   default_action {
-    target_group_arn = "${aws_alb_target_group.frontend.id}"
+    target_group_arn = "${aws_alb_target_group.service.id}"
     type             = "forward"
   }
 }

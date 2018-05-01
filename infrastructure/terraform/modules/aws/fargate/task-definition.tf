@@ -1,4 +1,4 @@
-resource "aws_ecs_task_definition" "frontend" {
+resource "aws_ecs_task_definition" "service" {
   family                   = "${local.name}"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
