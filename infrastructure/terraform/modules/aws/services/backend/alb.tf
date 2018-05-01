@@ -44,6 +44,8 @@ resource "aws_alb_target_group" "backend" {
     path = "/health"
   }
 
+  depends_on = ["aws_alb.backend"]
+
   tags {
     Project = "${var.project}"
     Env     = "${var.env}"

@@ -44,6 +44,8 @@ resource "aws_alb_target_group" "frontend" {
     path = "/health"
   }
 
+  depends_on = ["aws_alb.frontend"]
+
   tags {
     Project = "${var.project}"
     Env     = "${var.env}"
