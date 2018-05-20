@@ -3,6 +3,7 @@ resource "aws_vpc" "vpc" {
   enable_dns_hostnames = true
 
   tags {
+    Name    = "${local.name}"
     Project = "${var.project}"
     Env     = "${var.env}"
   }

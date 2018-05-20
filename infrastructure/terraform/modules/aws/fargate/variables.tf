@@ -43,6 +43,10 @@ variable "alb_internal" {
   default     = false
 }
 
+variable "alb_certificate_arn" {
+  description = "ARN to the SSL/TLS certificate for the domain served by the ALB"
+}
+
 variable "ecs_subnets" {
   type        = "list"
   description = "The public subnets to associate with this service"
@@ -52,6 +56,12 @@ variable "vpc_id" {
   description = "ID of the VPC"
 }
 
+variable "environment_variables" {
+  type        = "map"
+  description = "Environment variables for this service"
+  default     = {}
+}
+
 locals {
-  name = "${var.project}-${var.env}-${var.name}"
+  name = "${var.env}-${var.project}-${var.name}"
 }

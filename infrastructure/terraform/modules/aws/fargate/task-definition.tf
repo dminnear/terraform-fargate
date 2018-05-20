@@ -9,7 +9,7 @@ resource "aws_ecs_task_definition" "service" {
 [
   {
     "cpu": ${var.cpu},
-    "environment": [],
+    "environment": [${join(",",formatlist("{\"name\":%q,\"value\":%q}",keys(var.environment_variables),values(var.environment_variables)))}],
     "essential": true,
     "image": "${var.image}",
     "memory": ${var.memory},

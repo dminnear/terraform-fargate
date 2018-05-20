@@ -18,3 +18,7 @@ variable "availability_zones" {
   type        = "list"
   description = "Availability zones to place the subnets"
 }
+
+locals {
+  name = "${var.env}-${var.project}"
+}

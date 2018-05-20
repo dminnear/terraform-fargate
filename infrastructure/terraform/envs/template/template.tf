@@ -2,11 +2,10 @@ terraform {
   required_version = "= 0.11.7"
 
   backend "s3" {
-    bucket         = "dm-terraform"
-    key            = "terraform-fargate/template/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "TerraformLocks"
-    profile        = "terraform-fargate"
+    bucket  = "dm-terraform"
+    key     = "terraform-fargate/template/terraform.tfstate"
+    region  = "us-east-1"
+    profile = "terraform-fargate"
   }
 }
 
@@ -27,33 +26,43 @@ module "network" {
   subnets_availability_zones = "${var.availability_zones}"
 }
 
-module "backend" {
-  source = "../../modules/aws/fargate"
-
-  name         = "backend"
-  project      = "${var.project}"
-  env          = "${var.env}"
-  image        = "${var.backend_image}"
-  port         = 3000
-  cpu          = 256
-  memory       = 512
-  alb_subnets  = ["${module.network.private_subnet_ids}"]
-  alb_internal = true
-  ecs_subnets  = ["${module.network.private_subnet_ids}"]
-  vpc_id       = "${module.network.vpc_id}"
+data "aws_acm_certificate" "redirect" {
+  domain = "redirect.drewminnear.com"
 }
 
-module "frontend" {
+module "redirector" {
   source = "../../modules/aws/fargate"
 
-  name        = "frontend"
-  project     = "${var.project}"
-  env         = "${var.env}"
-  image       = "${var.frontend_image}"
-  port        = 8080
-  cpu         = 256
-  memory      = 512
-  alb_subnets = ["${module.network.public_subnet_ids}"]
-  ecs_subnets = ["${module.network.private_subnet_ids}"]
-  vpc_id      = "${module.network.vpc_id}"
+  name                = "redirector"
+  project             = "${var.project}"
+  env                 = "${var.env}"
+  image               = "morbz/docker-web-redirect"
+  port                = 80
+  cpu                 = 256
+  memory              = 512
+  alb_subnets         = ["${module.network.public_subnet_ids}"]
+  alb_internal        = false
+  alb_certificate_arn = "${data.aws_acm_certificate.redirect.arn}"
+  ecs_subnets         = ["${module.network.private_subnet_ids}"]
+  vpc_id              = "${module.network.vpc_id}"
+
+  environment_variables = {
+    REDIRECT_TARGET = "https://www.google.com"
+  }
+}
+
+data "aws_route53_zone" "redirect" {
+  name = "drewminnear.com."
+}
+
+resource "aws_route53_record" "redirect" {
+  zone_id = "${data.aws_route53_zone.redirect.zone_id}"
+  name    = "redirect.drewminnear.com"
+  type    = "A"
+
+  alias {
+    name                   = "${module.redirector.alb_dns_name}"
+    zone_id                = "${module.redirector.alb_zone_id}"
+    evaluate_target_health = false
+  }
 }

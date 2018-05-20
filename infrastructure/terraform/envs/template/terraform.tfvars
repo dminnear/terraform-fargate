@@ -2,7 +2,7 @@
 account_id         = "848674047683"
 profile            = "terraform-fargate"
 region             = "us-east-1"
-availability_zones = [ "us-east-1a", "us-east-1c" ]
+availability_zones = [ "us-east-1a", "us-east-1b" ]
 
 # Project specific
 project = "tf-fg"

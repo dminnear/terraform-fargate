@@ -17,6 +17,7 @@ resource "aws_security_group" "ecs" {
   }
 
   tags {
+    Name    = "${local.name}-ecs"
     Project = "${var.project}"
     Env     = "${var.env}"
     Service = "${var.name}"

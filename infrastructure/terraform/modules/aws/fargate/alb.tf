@@ -9,6 +9,13 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    protocol    = "tcp"
+    from_port   = 443
+    to_port     = 443
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -17,6 +24,7 @@ resource "aws_security_group" "alb" {
   }
 
   tags {
+    Name    = "${local.name}-alb"
     Project = "${var.project}"
     Env     = "${var.env}"
     Service = "${var.name}"
@@ -30,6 +38,7 @@ resource "aws_alb" "service" {
   security_groups = ["${aws_security_group.alb.id}"]
 
   tags {
+    Name    = "${local.name}"
     Project = "${var.project}"
     Env     = "${var.env}"
     Service = "${var.name}"
@@ -43,23 +52,37 @@ resource "aws_alb_target_group" "service" {
   vpc_id      = "${var.vpc_id}"
   target_type = "ip"
 
-  health_check {
-    path = "/health"
-  }
-
   depends_on = ["aws_alb.service"]
 
+  health_check {
+    matcher = "200-399"
+  }
+
   tags {
+    Name    = "${local.name}"
     Project = "${var.project}"
     Env     = "${var.env}"
     Service = "${var.name}"
   }
 }
 
-resource "aws_alb_listener" "service" {
+resource "aws_alb_listener" "http" {
   load_balancer_arn = "${aws_alb.service.id}"
   port              = "80"
   protocol          = "HTTP"
+
+  default_action {
+    target_group_arn = "${aws_alb_target_group.service.id}"
+    type             = "forward"
+  }
+}
+
+resource "aws_alb_listener" "https" {
+  load_balancer_arn = "${aws_alb.service.id}"
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2015-05"
+  certificate_arn   = "${var.alb_certificate_arn}"
 
   default_action {
     target_group_arn = "${aws_alb_target_group.service.id}"

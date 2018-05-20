@@ -7,6 +7,7 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags {
+    Name    = "${local.name}-public-${element(var.availability_zones, count.index)}"
     Project = "${var.project}"
     Env     = "${var.env}"
   }
@@ -16,6 +17,7 @@ resource "aws_internet_gateway" "public" {
   vpc_id = "${var.vpc_id}"
 
   tags {
+    Name    = "${local.name}"
     Project = "${var.project}"
     Env     = "${var.env}"
   }
@@ -29,12 +31,8 @@ resource "aws_route_table" "public" {
     gateway_id = "${aws_internet_gateway.public.id}"
   }
 
-  route {
-    ipv6_cidr_block = "::/0"
-    gateway_id      = "${aws_internet_gateway.public.id}"
-  }
-
   tags {
+    Name    = "${local.name}-public"
     Project = "${var.project}"
     Env     = "${var.env}"
   }
@@ -45,50 +43,4 @@ resource "aws_route_table_association" "public" {
 
   subnet_id      = "${element(aws_subnet.public.*.id, count.index)}"
   route_table_id = "${aws_route_table.public.id}"
-}
-
-resource "aws_network_acl" "public" {
-  vpc_id     = "${var.vpc_id}"
-  subnet_ids = ["${aws_subnet.public.*.id}"]
-
-  tags {
-    Project = "${var.project}"
-    Env     = "${var.env}"
-  }
-}
-
-resource "aws_network_acl_rule" "public_inbound" {
-  network_acl_id = "${aws_network_acl.public.id}"
-  rule_number    = 200
-  egress         = false
-  protocol       = "all"
-  rule_action    = "allow"
-  cidr_block     = "0.0.0.0/0"
-}
-
-resource "aws_network_acl_rule" "public_inbound_ipv6" {
-  network_acl_id  = "${aws_network_acl.public.id}"
-  rule_number     = 300
-  egress          = false
-  protocol        = "all"
-  rule_action     = "allow"
-  ipv6_cidr_block = "::/0"
-}
-
-resource "aws_network_acl_rule" "public_outbound" {
-  network_acl_id = "${aws_network_acl.public.id}"
-  rule_number    = 200
-  egress         = true
-  protocol       = "all"
-  rule_action    = "allow"
-  cidr_block     = "0.0.0.0/0"
-}
-
-resource "aws_network_acl_rule" "public_outbound_ipv6" {
-  network_acl_id  = "${aws_network_acl.public.id}"
-  rule_number     = 300
-  egress          = true
-  protocol        = "all"
-  rule_action     = "allow"
-  ipv6_cidr_block = "::/0"
 }
